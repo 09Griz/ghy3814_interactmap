@@ -76,7 +76,7 @@
         return `rgb(${r},${g},${b})`; 
     }
 
-    var medals = L.geoJson.ajax("assets/data.geojson", {
+    var medals = L.geoJson.ajax("data.geojson", {
         attribution: 'Data: Paris 2024 Olympics, Map: Nicholas Grizales',
         pointToLayer: function(feature, latlng) {
             return L.circleMarker(latlng, {
@@ -131,3 +131,4 @@
 
 </body>
 </html>
+
