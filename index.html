@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Paris 2024 Olympic Medals by Country</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+
+<style>
+    body { margin:0; padding:0; font-family: "Times New Roman", serif; }
+    h1 {
+        position: absolute;
+        left: 50px;
+        top: 10px;
+        padding: 8px 2%;
+        margin: 0;
+        background: rgba(0,0,0,0.85); 
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        border-radius: 5px;
+        color: #FFC627; 
+        font-size: 1.6em;
+        z-index: 800;
+    }
+    #map { position:absolute; top:0; bottom:0; width:100%; height:100vh; }
+
+    .legend {
+        background: #FFFFFF;
+        padding: 8px;
+        line-height: 18px;
+        color: #000000; 
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        border-radius: 5px;
+        font-family: "Times New Roman", serif;
+        border: 2px solid #FFC627; 
+    }
+    .legend-circle {
+        display: inline-block;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: middle;
+        border: 1px solid #000000; 
+    }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<h1>Paris 2024 Olympic Medals by Country</h1>
+
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js"></script>
+
+<script>
+
+    var map = L.map('map', { center:[20,0], zoom:2 });
+
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var minRadius = 2; 
+    var maxRadius = 12;
+
+    function calcRadius(val, minVal, maxVal) {
+        if (!val || val <= 0) return 2;
+        return minRadius + (Math.sqrt(val / minVal) * (maxRadius - minRadius) / 2);
+    }
+
+    function calcFillColor(val, maxVal) {
+        var percent = val / maxVal;
+        var r = 255;
+        var g = Math.floor(198 - 198*percent*0.5);
+        var b = Math.floor(39 - 39*percent);
+        return `rgb(${r},${g},${b})`; 
+    }
+
+    var medals = L.geoJson.ajax("assets/data.geojson", {
+        attribution: 'Data: Paris 2024 Olympics, Map: Nicholas Grizales',
+        pointToLayer: function(feature, latlng) {
+            return L.circleMarker(latlng, {
+                color: '#000000',      
+                weight: 1,
+                fillColor: '#FFC627',   
+                fillOpacity: 0.8,
+                radius: 3              
+            }).bindPopup(
+                `<b>${feature.properties.name}</b><br>🏅 Total Medals: ${feature.properties.total_medals}`
+            ).on({
+                mouseover: function() { this.setStyle({color:'#FFC627', fillColor:'#FFC627'}); },
+                mouseout: function() { this.setStyle({color:'#000000', fillColor: calcFillColor(feature.properties.total_medals, maxMedals)}); }
+            });
+        }
+    }).addTo(map);
+
+    var minMedals, maxMedals;
+
+    medals.on('data:loaded', function() {
+        var allMedals = medals.getLayers().map(l => l.feature.properties.total_medals);
+        minMedals = Math.min(...allMedals);
+        maxMedals = Math.max(...allMedals);
+
+        medals.eachLayer(function(layer){
+            var val = layer.feature.properties.total_medals;
+            layer.setRadius(calcRadius(val, minMedals, maxMedals));
+            layer.setStyle({fillColor: calcFillColor(val, maxMedals)});
+        });
+
+        var legend = L.control({position: 'bottomright'});
+        legend.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'legend');
+            var grades = [minMedals, maxMedals];
+            var labels = [];
+            for (var i = 0; i < grades.length; i++) {
+                var radius = calcRadius(grades[i], minMedals, maxMedals);
+                labels.push(
+                    '<div><span class="legend-circle" style="width:'+radius*2+'px; height:'+radius*2+'px; background:'+calcFillColor(grades[i], maxMedals)+';"></span> ' +
+                    grades[i] + ' medals</div>'
+                );
+            }
+            div.innerHTML = '<b>Medal Count</b><br>' + labels.join('');
+            return div;
+        };
+        legend.addTo(map);
+    });
+
+    L.control.scale({position:'bottomleft'}).addTo(map);
+
+</script>
+
+</body>
+</html>
